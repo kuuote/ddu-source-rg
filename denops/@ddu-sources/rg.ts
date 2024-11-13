@@ -175,6 +175,7 @@ export class Source extends BaseSource<Params> {
         ];
 
         let items: Item<ActionData>[] = [];
+        let totalSize = 0;
         const enqueueSize2nd = 100000;
         let enqueueSize = enqueueSize1st;
         let numChunks = 0;
@@ -212,13 +213,19 @@ export class Source extends BaseSource<Params> {
                 items.push(ret);
               }
             }
-            if (items.length >= enqueueSize) {
+            const exceedMax = args.sourceOptions.volatile &&
+              totalSize >= args.sourceOptions.maxItems;
+            if (items.length >= enqueueSize || exceedMax) {
               numChunks++;
               if (numChunks > 1) {
                 enqueueSize = enqueueSize2nd;
               }
               controller.enqueue(items);
               items = [];
+              if (exceedMax) {
+                controller.close();
+                return;
+              }
             }
           }
           if (items.length) {
